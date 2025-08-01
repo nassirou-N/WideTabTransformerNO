@@ -710,8 +710,9 @@ def save_results(results, args, save_path="results/experiment_results.json"):
     
     print(f"\nResults saved to: {save_path}")
 
+"""
 def main():
-    """Main execution function"""
+  
     IN_COLAB = 'google.colab' in sys.modules
     
     if IN_COLAB:
@@ -868,3 +869,313 @@ if __name__ == '__main__':
         import traceback
         traceback.print_exc()
         sys.exit(1)
+
+ """
+
+def main():
+   """Enhanced main execution function"""
+   # Setup
+   setup_directories()
+   IN_COLAB = 'google.colab' in sys.modules
+   
+   if IN_COLAB:
+       print("🔵 Running in Google Colab environment")
+       import matplotlib
+       matplotlib.use('module://ipykernel.pylab.backend_inline')
+   
+   # Parse arguments
+   args = parameter_parser()
+   
+   # Print header and parameters
+   print_header()
+   print_parameters(args)
+   
+   # Debug parsing if requested
+   print(f"\n{'='*60}")
+   print("PARSING VERIFICATION")
+   print(f"{'='*60}")
+   
+   debug_parse_smart_contracts(args.filename, max_fragments=3)
+   
+   # Interactive confirmation (skip in non-interactive mode)
+   if sys.stdin.isatty():
+       user_input = input("\nDoes the parsing look correct? (y/n) [y]: ").lower().strip()
+       if user_input and user_input != 'y':
+           print("Parsing verification failed. Please check your data.")
+           return
+   else:
+       print("\nNon-interactive mode detected, continuing automatically...")
+   
+   # Create dataset
+   print(f"\n{'='*60}")
+   print("DATASET CREATION")
+   print(f"{'='*60}")
+   
+   dataset = create_dataset(args.filename, args)
+   
+   # Save dataset info
+   dataset_info = {
+       'total_samples': len(dataset),
+       'vulnerable_samples': sum(dataset['label'] == 1),
+       'safe_samples': sum(dataset['label'] == 0),
+       'vector_shape': dataset.iloc[0]['vector'].shape,
+       'vulnerability_ratio': sum(dataset['label'] == 1) / len(dataset)
+   }
+   
+   with open(Path(CONFIG['RESULTS_DIR']) / 'dataset_info.json', 'w') as f:
+       json.dump(dataset_info, f, indent=4)
+   
+   # Training phase
+   print(f"\n{'='*60}")
+   print("MODEL TRAINING")
+   print(f"{'='*60}")
+   
+   start_time = time.time()
+   
+   if args.use_kfold:
+       # K-fold cross validation
+       aggregated_results, histories = train_with_kfold(
+           dataset, args, k=args.kfold_splits
+       )
+       
+       # Save k-fold results
+       save_results(aggregated_results, args, 
+                   Path(CONFIG['RESULTS_DIR']) / f'kfold_results_{args.kfold_splits}.json')
+       
+       # Plot average training curves
+       avg_history = average_histories(histories)
+       plot_training_curves(
+           avg_history,
+           save_path=Path(CONFIG['PLOTS_DIR']) / f"{Path(args.filename).stem}_kfold_training_curves.png",
+           show_in_colab=IN_COLAB
+       )
+       
+       # Use mean values for final results
+       results = {
+           metric: stats['mean'] 
+           for metric, stats in aggregated_results.items() 
+           if isinstance(stats, dict) and 'mean' in stats
+       }
+       
+   else:
+       # Standard training
+       model = WideTabTransformer(dataset, args)
+       
+       # Print model summary
+       model.get_model_summary()
+       
+       # Train model
+       history = model.train()
+       
+       # Plot training curves
+       plot_training_curves(
+           history, 
+           save_path=Path(CONFIG['PLOTS_DIR']) / f"{Path(args.filename).stem}_training_curves.png",
+           show_in_colab=IN_COLAB
+       )
+       
+       # Evaluate model
+       print(f"\n{'='*60}")
+       print("MODEL EVALUATION")
+       print(f"{'='*60}")
+       
+       results = model.evaluate()
+       
+       # Save model if requested
+       if args.save_best_model:
+           model_path = Path(CONFIG['MODELS_DIR']) / f"{Path(args.filename).stem}_final_model.h5"
+           model.model.save(model_path)
+           print(f"Model saved to: {model_path}")
+   
+   training_time = time.time() - start_time
+   
+   # Plot evaluation metrics
+   print(f"\n{'='*60}")
+   print("GENERATING EVALUATION PLOTS")
+   print(f"{'='*60}")
+   
+   plot_metrics_comparison(
+       results,
+       save_path=Path(CONFIG['PLOTS_DIR']) / f"{Path(args.filename).stem}_metrics_comparison.png",
+       show_in_colab=IN_COLAB
+   )
+   
+   plot_confusion_matrix_detailed(
+       results,
+       save_path=Path(CONFIG['PLOTS_DIR']) / f"{Path(args.filename).stem}_confusion_matrix.png",
+       show_in_colab=IN_COLAB
+   )
+   
+   # Save final results
+   save_results(results, args, 
+               Path(CONFIG['RESULTS_DIR']) / f"{Path(args.filename).stem}_final_results.json")
+   
+   # Generate final report
+   generate_final_report(args, results, training_time, dataset_info)
+   
+   # Final summary
+   print(f"\n{'='*60}")
+   print("EXECUTION COMPLETED SUCCESSFULLY! 🎉")
+   print(f"{'='*60}")
+   print(f"Total execution time: {training_time/60:.2f} minutes")
+   print(f"Results saved in: {CONFIG['RESULTS_DIR']}/")
+   print(f"Plots saved in: {CONFIG['PLOTS_DIR']}/")
+   print(f"Models saved in: {CONFIG['MODELS_DIR']}/")
+   
+   if IN_COLAB:
+       print("\n📊 All plots have been displayed inline in Colab")
+
+def average_histories(histories):
+   """Average multiple training histories for k-fold visualization"""
+   avg_history = type('obj', (object,), {})()
+   avg_history.history = {}
+   
+   # Get all metrics from first history
+   metrics = histories[0].history.keys()
+   
+   for metric in metrics:
+       # Collect all values for this metric
+       all_values = []
+       min_length = min(len(h.history[metric]) for h in histories)
+       
+       for h in histories:
+           all_values.append(h.history[metric][:min_length])
+       
+       # Average across folds
+       avg_history.history[metric] = np.mean(all_values, axis=0).tolist()
+   
+   return avg_history
+
+def generate_final_report(args, results, training_time, dataset_info):
+   """Generate comprehensive markdown report"""
+   report_path = Path(CONFIG['RESULTS_DIR']) / f"{Path(args.filename).stem}_report.md"
+   
+   with open(report_path, 'w') as f:
+       f.write("# Smart Contract Vulnerability Detection Report\n\n")
+       f.write(f"**Generated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
+       
+       f.write("## Executive Summary\n\n")
+       f.write(f"- **Model:** Wide + TabTransformer Neural Network\n")
+       f.write(f"- **Task:** Reentrancy Vulnerability Detection\n")
+       f.write(f"- **Accuracy:** {results['accuracy']:.2%}\n")
+       f.write(f"- **F1-Score:** {results['f1_score']:.2%}\n")
+       f.write(f"- **Training Time:** {training_time/60:.2f} minutes\n\n")
+       
+       f.write("## Dataset Information\n\n")
+       f.write(f"- **Total Samples:** {dataset_info['total_samples']:,}\n")
+       f.write(f"- **Vulnerable:** {dataset_info['vulnerable_samples']:,} ({dataset_info['vulnerability_ratio']:.1%})\n")
+       f.write(f"- **Safe:** {dataset_info['safe_samples']:,} ({1-dataset_info['vulnerability_ratio']:.1%})\n")
+       f.write(f"- **Vector Dimensions:** {dataset_info['vector_shape']}\n\n")
+       
+       f.write("## Model Architecture\n\n")
+       f.write(f"- **Wide Features:** {args.wide_features}\n")
+       f.write(f"- **Transformer Layers:** {args.num_transformer_layers}\n")
+       f.write(f"- **Attention Heads:** {args.num_heads}\n")
+       f.write(f"- **Embedding Dimension:** {args.embedding_dim}\n")
+       f.write(f"- **Dropout Rate:** {args.dropout}\n\n")
+       
+       f.write("## Training Configuration\n\n")
+       f.write(f"- **Learning Rate:** {args.lr}\n")
+       f.write(f"- **Batch Size:** {args.batch_size}\n")
+       f.write(f"- **Epochs:** {args.epochs}\n")
+       f.write(f"- **Early Stopping:** {args.early_stopping_patience} epochs\n")
+       f.write(f"- **L1 Regularization:** {args.l1_reg}\n")
+       f.write(f"- **L2 Regularization:** {args.l2_reg}\n\n")
+       
+       f.write("## Performance Metrics\n\n")
+       f.write("| Metric | Value |\n")
+       f.write("|--------|-------|\n")
+       f.write(f"| Accuracy | {results['accuracy']:.4f} |\n")
+       f.write(f"| Precision | {results['precision']:.4f} |\n")
+       f.write(f"| Recall | {results['recall']:.4f} |\n")
+       f.write(f"| F1-Score | {results['f1_score']:.4f} |\n")
+       f.write(f"| False Positive Rate | {results['fp_rate']:.4f} |\n")
+       f.write(f"| False Negative Rate | {results['fn_rate']:.4f} |\n\n")
+       
+       if 'confusion_matrix' in results:
+           cm = results['confusion_matrix']
+           f.write("## Confusion Matrix\n\n")
+           f.write("| | Predicted Safe | Predicted Vulnerable |\n")
+           f.write("|---|---|---|\n")
+           f.write(f"| **Actual Safe** | {cm['tn']} | {cm['fp']} |\n")
+           f.write(f"| **Actual Vulnerable** | {cm['fn']} | {cm['tp']} |\n\n")
+       
+       f.write("## Key Findings\n\n")
+       
+       # Performance analysis
+       if results['accuracy'] > 0.95:
+           f.write("- ✅ **Excellent Performance:** The model achieves outstanding accuracy (>95%)\n")
+       elif results['accuracy'] > 0.90:
+           f.write("- ✅ **Strong Performance:** The model achieves high accuracy (>90%)\n")
+       elif results['accuracy'] > 0.85:
+           f.write("- ⚡ **Good Performance:** The model achieves reasonable accuracy (>85%)\n")
+       else:
+           f.write("- ⚠️ **Needs Improvement:** The model accuracy is below expectations (<85%)\n")
+       
+       # Balance analysis
+       if abs(results['precision'] - results['recall']) < 0.05:
+           f.write("- ✅ **Well Balanced:** Precision and recall are well balanced\n")
+       elif results['precision'] > results['recall']:
+           f.write("- ⚡ **Conservative:** Higher precision than recall (fewer false positives)\n")
+       else:
+           f.write("- ⚡ **Sensitive:** Higher recall than precision (fewer false negatives)\n")
+       
+       # Error analysis
+       if results['fp_rate'] < 0.05 and results['fn_rate'] < 0.05:
+           f.write("- ✅ **Low Error Rates:** Both false positive and false negative rates are very low\n")
+       elif results['fn_rate'] > 0.1:
+           f.write("- ⚠️ **High False Negatives:** The model misses some vulnerable contracts\n")
+       elif results['fp_rate'] > 0.1:
+           f.write("- ⚠️ **High False Positives:** The model incorrectly flags some safe contracts\n")
+       
+       f.write("\n## Recommendations\n\n")
+       
+       if results['accuracy'] < 0.90:
+           f.write("1. Consider increasing model complexity (more layers/heads)\n")
+           f.write("2. Collect more training data, especially for minority class\n")
+           f.write("3. Experiment with different learning rates\n")
+       
+       if abs(results['precision'] - results['recall']) > 0.1:
+           f.write("1. Adjust class weights to balance precision/recall trade-off\n")
+           f.write("2. Consider different decision thresholds\n")
+       
+       if results['fp_rate'] > 0.1 or results['fn_rate'] > 0.1:
+           f.write("1. Implement ensemble methods for more robust predictions\n")
+           f.write("2. Add more vulnerability-specific features\n")
+           f.write("3. Consider active learning to improve on difficult cases\n")
+       
+       f.write("\n## Conclusion\n\n")
+       f.write("The Wide + TabTransformer architecture demonstrates ")
+       
+       if results['f1_score'] > 0.90:
+           f.write("excellent capability in detecting reentrancy vulnerabilities ")
+       elif results['f1_score'] > 0.85:
+           f.write("strong capability in detecting reentrancy vulnerabilities ")
+       else:
+           f.write("promising results for detecting reentrancy vulnerabilities ")
+       
+       f.write("in smart contracts. The hybrid approach effectively combines ")
+       f.write("memorization (Wide) and generalization (TabTransformer) ")
+       f.write("to achieve robust vulnerability detection.\n")
+   
+   print(f"\nDetailed report saved to: {report_path}")
+
+if __name__ == '__main__':
+   try:
+       # Set encoding for Windows compatibility
+       if sys.platform == 'win32':
+           sys.stdout.reconfigure(encoding='utf-8')
+           sys.stderr.reconfigure(encoding='utf-8')
+   except:
+       pass
+   
+   try:
+       main()
+   except KeyboardInterrupt:
+       print("\n\nTraining interrupted by user.")
+       sys.exit(1)
+   except Exception as e:
+       print(f"\nError: {e}")
+       import traceback
+       traceback.print_exc()
+       sys.exit(1)
