@@ -520,8 +520,8 @@ class WideTabTransformer:
         print(f"- L2 regularization: {self.args.l2_reg}")
         
         # Count parameters
-        trainable_params = sum([np.prod(v.shape()) for v in self.model.trainable_weights])
-        non_trainable_params = sum([np.prod(v.shape()) for v in self.model.non_trainable_weights])
+        trainable_params = sum([np.prod(v.shape) for v in self.model.trainable_weights])
+        non_trainable_params = sum([np.prod(v.shape) for v in self.model.non_trainable_weights])
         
         print(f"\nTotal parameters: {trainable_params + non_trainable_params:,}")
         print(f"Trainable parameters: {trainable_params:,}")
