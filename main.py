@@ -336,6 +336,7 @@ def create_dataset(filename, args, cache_enabled=True):
     # Save to cache
     if cache_enabled:
         print(f"Saving dataset to cache: {cache_file}")
+        os.makedirs(os.path.dirname(cache_file), exist_ok=True)
         df.to_pickle(cache_file)
     
     # Print dataset statistics
