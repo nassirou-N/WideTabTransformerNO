@@ -37,9 +37,33 @@ warnings.filterwarnings("ignore")
 np.set_printoptions(threshold=np.inf)
 
 # Set random seeds for reproducibility
-np.random.seed(42)
+import time
+seed = int(time.time()) % 10000
+np.random.seed(seed)
 import tensorflow as tf
-tf.random.set_seed(42)
+tf.random.set_seed(seed)
+print(f"Using random seed: {seed}")
+
+
+# ADD THIS NEW SECTION:
+# Advanced training configuration
+ADVANCED_CONFIG = {
+    'USE_MIXED_PRECISION': True,
+    'GRADIENT_ACCUMULATION_STEPS': 2,
+    'WARMUP_EPOCHS': 10,
+    'COSINE_RESTARTS': True
+}
+
+def setup_advanced_training():
+    """Setup advanced training optimizations"""
+    if ADVANCED_CONFIG['USE_MIXED_PRECISION']:
+        try:
+            from tensorflow.keras import mixed_precision
+            policy = mixed_precision.Policy('mixed_float16')
+            mixed_precision.set_global_policy(policy)
+            print("✅ Mixed precision training enabled")
+        except:
+            print("⚠️ Mixed precision not available")
 
 # Configure matplotlib for Colab
 import matplotlib

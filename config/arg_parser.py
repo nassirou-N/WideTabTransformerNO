@@ -16,22 +16,22 @@ def parameter_parser():
                        help="Vulnerability type: ts(timestamp), re(reentrancy), io(integer overflow)")
     
     # Training hyperparameters - OPTIMIZED VALUES
-    parser.add_argument('--lr', type=float, default=0.0001,  # Reduced from 0.001
-                       help='Learning rate (default: 0.0001)')
-    parser.add_argument('--dropout', type=float, default=0.35,  # Increased from 0.2
-                       help='Dropout rate (default: 0.35)')
-    parser.add_argument('--epochs', type=int, default=40,  # Reduced from 20
-                       help='Number of training epochs (default: 40)')
-    parser.add_argument('--batch_size', type=int, default=16,  # Increased from 4
-                       help='Batch size (default: 16)')
+    parser.add_argument('--lr', type=float, default=0.00008,  # Reduced from 0.001
+                       help='Learning rate (default: 0.00008)')
+    parser.add_argument('--dropout', type=float, default=0.25,  # Increased from 0.2
+                       help='Dropout rate (default: 0.25)')
+    parser.add_argument('--epochs', type=int, default=500,  # Reduced from 20
+                       help='Number of training epochs (default: 500)')
+    parser.add_argument('--batch_size', type=int, default=48,  # Increased from 4
+                       help='Batch size (default: 48)')
     
     # Early stopping and learning rate scheduling
-    parser.add_argument('--early_stopping_patience', type=int, default=10,
-                       help='Early stopping patience (default: 10)')
-    parser.add_argument('--reduce_lr_patience', type=int, default=5,
-                       help='Reduce LR on plateau patience (default: 5)')
-    parser.add_argument('--min_lr', type=float, default=1e-6,
-                       help='Minimum learning rate (default: 1e-6)')
+    parser.add_argument('--early_stopping_patience', type=int, default=25,
+                       help='Early stopping patience (default: 25)')
+    parser.add_argument('--reduce_lr_patience', type=int, default=10,
+                       help='Reduce LR on plateau patience (default: 10)')
+    parser.add_argument('--min_lr', type=float, default=1e-7,
+                       help='Minimum learning rate (default: 1e-7)')
     
     # Enhanced vectorization parameters
     parser.add_argument('--vec_length', type=int, default=128,  # Reduced from 150
@@ -52,22 +52,22 @@ def parameter_parser():
                        help='Number of features for wide component (default: 30)')
     
     # TabTransformer architecture parameters - SIMPLIFIED
-    parser.add_argument('--num_transformer_layers', type=int, default=2,  # Reduced from 3
-                       help='Number of transformer layers (default: 2)')
-    parser.add_argument('--num_heads', type=int, default=4,  # Reduced from 8
-                       help='Number of attention heads (default: 4)')
-    parser.add_argument('--embedding_dim', type=int, default=32,  # Reduced from 64
-                       help='Transformer embedding dimension (default: 32)')
-    parser.add_argument('--mlp_hidden_dim', type=int, default=64,  # Reduced from 128
-                       help='MLP hidden dimension in transformer (default: 64)')
+    parser.add_argument('--num_transformer_layers', type=int, default=3,  # Reduced from 3
+                       help='Number of transformer layers (default: 3)')
+    parser.add_argument('--num_heads', type=int, default=8,  # Reduced from 8
+                       help='Number of attention heads (default: 8)')
+    parser.add_argument('--embedding_dim', type=int, default=64,  # Reduced from 64
+                       help='Transformer embedding dimension (default: 64)')
+    parser.add_argument('--mlp_hidden_dim', type=int, default=128,  # Reduced from 128
+                       help='MLP hidden dimension in transformer (default: 128)')
     
     # Regularization parameters
-    parser.add_argument('--l1_reg', type=float, default=0.01,
-                       help='L1 regularization strength (default: 0.01)')
-    parser.add_argument('--l2_reg', type=float, default=0.01,
-                       help='L2 regularization strength (default: 0.01)')
-    parser.add_argument('--gradient_clip', type=float, default=1.0,
-                       help='Gradient clipping value (default: 1.0)')
+    parser.add_argument('--l1_reg', type=float, default=0.005,
+                       help='L1 regularization strength (default: 0.005)')
+    parser.add_argument('--l2_reg', type=float, default=0.005,
+                       help='L2 regularization strength (default: 0.005)')
+    parser.add_argument('--gradient_clip', type=float, default=0.5,
+                       help='Gradient clipping value (default: 0.5)')
     
     # Advanced options
     parser.add_argument('--use_enhanced_vectorization', action='store_true', default=True,
@@ -80,8 +80,8 @@ def parameter_parser():
                        help='Use K-fold cross validation (default: False)')
     parser.add_argument('--kfold_splits', type=int, default=5,
                        help='Number of K-fold splits (default: 5)')
-    parser.add_argument('--progressive_training', action='store_true', default=False,
-                       help='Use progressive training strategy (default: False)')
+    parser.add_argument('--progressive_training', action='store_true', default=True,
+                       help='Use progressive training strategy (default: True)')
     parser.add_argument('--complexity_weighting', action='store_true', default=True,
                        help='Use complexity-based sample weighting (default: True)')
     parser.add_argument('--vocab_stats', action='store_true', default=False,

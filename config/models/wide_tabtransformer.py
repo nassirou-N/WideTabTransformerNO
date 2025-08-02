@@ -122,10 +122,14 @@ class WideTabTransformer:
         )
         self.class_weight = {index: weight for index, weight in enumerate(class_weights)}
         
-        # Adjust weights if needed
+        # Optimal weight adjustment
         if self.args.complexity_weighting:
-            # Increase weight for vulnerable class
-            self.class_weight[1] *= 1.2
+            # Calculate optimal weight ratio
+            pos_ratio = len(positive_idxs) / len(self.labels)
+            weight_multiplier = min(2.0, 1.0 / pos_ratio) if pos_ratio < 0.5 else 1.0
+            self.class_weight[1] *= weight_multiplier
+            # Cap the maximum weight to prevent instability
+            self.class_weight[1] = min(self.class_weight[1], 3.0)
         
         print(f"Class distribution - Train: Safe: {sum(y_train == 0)}, Vulnerable: {sum(y_train == 1)}")
         print(f"Class distribution - Val: Safe: {sum(y_val == 0)}, Vulnerable: {sum(y_val == 1)}")
@@ -269,11 +273,11 @@ class WideTabTransformer:
         if self.args.save_best_model:
             checkpoint = ModelCheckpoint(
                 filepath=self.args.model_checkpoint_path,
-                monitor='val_loss',
+                monitor='val_accuracy',
                 save_best_only=True,
                 save_weights_only=False,
                 verbose=1,
-                mode='min'
+                mode='max'
             )
             callbacks.append(checkpoint)
         
@@ -290,15 +294,25 @@ class WideTabTransformer:
             callbacks.append(tensorboard)
         
         # Custom learning rate scheduler
+        # Cosine annealing learning rate scheduler
+        def cosine_annealing_schedule(epoch):
+            """Cosine annealing learning rate schedule"""
+            initial_lr = self.lr
+            final_lr = self.args.min_lr
+            return final_lr + (initial_lr - final_lr) * 0.5 * (1 + np.cos(np.pi * epoch / self.epochs))
+        
+        cosine_scheduler = LearningRateScheduler(cosine_annealing_schedule, verbose=1)
+        callbacks.append(cosine_scheduler)
+
         def lr_schedule(epoch):
             """Learning rate schedule"""
             lr = self.lr
-            if epoch > 20:
-                lr *= 0.5
-            elif epoch > 40:
-                lr *= 0.2
-            elif epoch > 60:
-                lr *= 0.1
+            if epoch > 100:
+                lr *= 0.8
+            elif epoch > 200:
+                lr *= 0.6
+            elif epoch > 350:
+                lr *= 0.4
             return lr
         
         lr_scheduler = LearningRateScheduler(lr_schedule, verbose=1)

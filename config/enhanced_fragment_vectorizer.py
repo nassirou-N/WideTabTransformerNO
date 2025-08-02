@@ -198,13 +198,13 @@ class EnhancedFragmentVectorizer:
         augmented_fragments = [fragment]  # Always include original
         
         # 1. Variable renaming (preserve semantics)
-        if random.random() < 0.3:
+        if random.random() < 0.4:
             renamed_fragment = self._rename_variables(fragment)
             if renamed_fragment != fragment:
                 augmented_fragments.append(renamed_fragment)
         
         # 2. Comment injection (doesn't change logic)
-        if random.random() < 0.2:
+        if random.random() < 0.3:
             commented_fragment = self._add_comments(fragment)
             augmented_fragments.append(commented_fragment)
         
@@ -405,17 +405,17 @@ class EnhancedFragmentVectorizer:
         model = Word2Vec(
             sentences=filtered_fragments,
             vector_size=self.vector_length,
-            window=10,  # Increased window
-            min_count=3,  # Increased minimum count
+            window=12,  # Increased window
+            min_count=2,  # Increased minimum count
             workers=4,
             sg=1,  # Skip-gram
             hs=0,  # Negative sampling
-            negative=15,  # Increased negative samples
-            epochs=30,  # More training epochs
+            negative=20,  # Increased negative samples
+            epochs=50,  # More training epochs
             alpha=0.025,
-            min_alpha=0.0001,
+            min_alpha=0.00001,
             seed=42,
-            sample=1e-5  # Subsampling for frequent words
+            sample=1e-6  # Subsampling for frequent words
         )
         
         return model

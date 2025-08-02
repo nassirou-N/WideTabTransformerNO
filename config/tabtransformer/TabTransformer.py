@@ -26,7 +26,7 @@ class TabTransformer(Layer):
                  use_layer_norm=True,
                  l1_reg=0.01,
                  l2_reg=0.01,
-                 attention_dropout=0.1,
+                 attention_dropout=0.05,
                  use_residual=True,
                  use_positional_encoding=True,
                  **kwargs):
@@ -235,7 +235,7 @@ class TabTransformer(Layer):
                 noise = tf.random.normal(
                     shape=tf.shape(x), 
                     mean=0.0, 
-                    stddev=0.01
+                    stddev=0.005
                 )
                 x = x + noise
         
