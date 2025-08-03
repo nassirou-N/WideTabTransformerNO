@@ -80,8 +80,8 @@ def parameter_parser():
                        help='Use K-fold cross validation (default: False)')
     parser.add_argument('--kfold_splits', type=int, default=5,
                        help='Number of K-fold splits (default: 5)')
-    parser.add_argument('--progressive_training', action='store_true', default=True,
-                       help='Use progressive training strategy (default: True)')
+    parser.add_argument('--progressive_training', action='store_true', default=False,
+                       help='Use progressive training strategy (default: False)')
     parser.add_argument('--complexity_weighting', action='store_true', default=True,
                        help='Use complexity-based sample weighting (default: True)')
     parser.add_argument('--vocab_stats', action='store_true', default=False,
